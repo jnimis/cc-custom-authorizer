@@ -1,14 +1,17 @@
+
+var AWS = require('aws-sdk/dist/aws-sdk-react-native');
 const lib = require('./lib');
 let data;
 
 const get_admin_api_token = () => {
-  var secretsmanager = new AWS.SecretsManager();
+  var ssm = new AWS.SSM({region: 'us-east-1'});
   var params = {
-    SecretId: "cornercam/auth0-admin-api-key"
+    Name: "/cornercam/auth0-admin-api-key",
+    WithDecryption: true
   }
-  secretsmanager.getSecretValue(params, function (err, data) {
+  ssm.getParameter(params, function (err, data) {
     if (err) console.log(err, err.stack); // an error occurred
-    else     return data.SecretString;
+    else     return data.Parameter.Value;
   });
 }
 
@@ -36,11 +39,12 @@ const is_authorized = (user_id, gym_id) => {
 // Lambda function index.handler - thin wrapper around lib.authenticate
 module.exports.handler = async (event, context, callback) => {
   try {
+    // console.log(get_admin_api_token());
     data = await lib.authenticate(event);
-    console.log(context);
-    console.log(data);
+    
     // get metadata from auth0
-    let user_id = data.principalId
+    let user_id = data.principalId;
+    console.log("user id is " + user_id);
   }
   catch (err) {
       console.log(err);
