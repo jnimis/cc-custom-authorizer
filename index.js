@@ -102,13 +102,13 @@ module.exports.handler = async (event, context, callback) => {
     if (access_level == AccessCodes.ALLOW) {
       return data;
     } else if (access_level == AccessCodes.SYSTEM_ERROR) {
-      return context.fail("There was a system error: 2");
+      return context.fail("There was a system error: 105");
     } else {
       return context.fail("User not authorized for this gym");
     }
   }
   catch (err) {
       console.log(err);
-      return context.fail("There was a system error: 3");
+      return context.fail("There was a system error: 112");
   }
 };
