@@ -2,7 +2,8 @@
 var AWS = require('aws-sdk');
 const lib = require('./lib');
 let data;
-
+var ssm = new AWS.SSM({region: 'us-east-1'});
+  
 const AccessCodes = Object.freeze({
   UNKNOWN_USER:  0,
   ALLOW:         1,
@@ -11,7 +12,6 @@ const AccessCodes = Object.freeze({
 });
 
 const get_admin_api_token = async () => {
-  var ssm = new AWS.SSM({region: 'us-east-1'});
   console.log("initialized ssm");
   var params = {
     Name: "/cornercam/auth0-admin-api-key",
@@ -85,12 +85,18 @@ module.exports.handler = async (event, context, callback) => {
   try {
     console.log("start of function");
 
-    data = await lib.authenticate(event);
+    var user_id;
+    try { 
+      data = await lib.authenticate(event);
+      user_id = data.principalId;
+      console.log("user id is " + user_id);
+    } catch (e) {
+      console.log("error inside authentication flow", e);
+      return context.fail("Authentication failure: invalid auth token");
+    }
     console.log("authentication complete");
     
     // get metadata from auth0
-    let user_id = data.principalId;
-    console.log("user id is " + user_id);
     const [message, access_level] = await is_authorized(user_id, 1); // "google-oauth2|106647354996701306231"
     console.log(message);
     if (access_level == AccessCodes.ALLOW) {
