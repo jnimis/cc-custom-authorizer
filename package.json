@@ -1,11 +1,16 @@
 {
   "name": "lambda-auth0-authenticator",
   "version": "0.1.0",
+  "config": {
+    "arn": "arn:aws:lambda:us-east-1:894809317867:function:cc-custom-authorizer",
+    "archive_name": "custom-authorizer.zip"
+  },
   "description": "An AWS Lambda function to provide a Custom Authenticator for AWS API Gateway that verifies RS* signed tokens",
   "main": "index.js",
   "scripts": {
     "test": "lambda-local --timeout 300 --lambda-path index.js --event-path event.json",
-    "bundle": "rm -f custom-authorizer.zip ; zip custom-authorizer.zip -r *.js *.json node_modules/"
+    "bundle": "rm -f $npm_package_config_archive_name ; zip $npm_package_config_archive_name -r *.js *.json node_modules/",
+    "deploy": "aws lambda update-function-code --function-name $npm_package_config_arn --zip-file fileb://$npm_package_config_archive_name"
   },
   "author": "Jason Haines",
   "license": "Apache-2.0",
