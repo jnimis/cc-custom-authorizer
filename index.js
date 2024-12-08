@@ -3,6 +3,9 @@ var AWS = require('aws-sdk');
 const lib = require('./lib');
 let data;
 var ssm = new AWS.SSM({region: 'us-east-1'});
+var dynamo = new AWS.DynamoDB({apiVersion: "2012-08-10", region: 'us-east-1'})
+
+let TABLE_NAME = "CCUserService";
   
 const AccessCodes = Object.freeze({
   UNKNOWN_USER:  0,
@@ -10,6 +13,10 @@ const AccessCodes = Object.freeze({
   UNAUTHORIZED:  2,
   SYSTEM_ERROR:  11
 });
+
+function isEmpty(val) {
+  return val == undefined || val == null;
+}
 
 const get_admin_api_token = async () => {
   console.log("initialized ssm");
@@ -26,59 +33,47 @@ const get_admin_api_token = async () => {
   }
 }
 
+const gym_auth_is_valid = async (gym_auth) => {
+  if (isEmpty(gym_auth)) {
+    return AccessCodes.UNKNOWN_USER
+  }
+  
+  if (isEmpty(gym_auth.accessExpires)) {
+    return AccessCodes.UNAUTHORIZED;
+  }
+  
+  let today = new Date().toISOString().substring(0, 10);
+
+  if (gym_auth.accessExpires >= today) {
+    return AccessCodes.ALLOW;
+  } else {
+    return AccessCodes.UNAUTHORIZED; // owes money
+  }
+}
+
 const is_authorized = async (user_id, gym_id) => {
 
-  let admin_api_token = await get_admin_api_token();
-  if (!admin_api_token) {
-    console.log("is_authorized function detected undefined token");
-    return false;
-  }
-  console.log("got admin api token");
-  
   let encoded_user_id = encodeURIComponent(user_id);
-  var myHeaders = new Headers();
-  myHeaders.append("Accept", "application/json");
-  myHeaders.append("Authorization", "Bearer " + admin_api_token);
-
-  var requestOptions = {
-    method: 'GET',
-    headers: myHeaders,
-    redirect: 'follow'
-  };
-
-  let err = await fetch("https://onemanband.auth0.com/api/v2/users?q=user_id%3A" + encoded_user_id, requestOptions)
-    .then(response => response.text())
-    .then(result => {
-      console.log(result);
-      let resultObj = JSON.parse(result);
-      if (resultObj.statusCode == 401) {
-        return "exception: invalid auth0 api key";
-      }
-      let metadataObj = JSON.parse(result)[0].app_metadata;
-      if (!metadataObj) {
-        return "no metadata for user " + user_id;
-      }
-      let access_level = metadataObj["gym_" + gym_id];
-      if (!access_level) {
-        return "user has not tried to register at this gym";
-      }
-      if (access_level < 1) {
-        return "user has gym record but is not authorized";
-      } else {
-        return "";
-      }
-    })
-    .catch(error => {
-      return "exception: " + error;
-    });
-    console.log(err);
-    if (err == "") {
-      return ["authorized", AccessCodes.ALLOW];
-    } else if (err.startsWith("exception")) {
-      return ["system error", AccessCodes.SYSTEM_ERROR];
-    } else {
-      return [err, AccessCodes.UNAUTHORIZED];
+  
+  let PK = "USER#" + user_id;
+  let SK = "GYM#" + gym_id;
+  req_params = {
+    TableName: TABLE_NAME,
+    Key: {
+      PK: {"S": PK},
+      SK: {"S": SK}
     }
+  }
+  return await dynamo.getItem(req_params, function(e, data) {
+    if (e) {
+      console.log("get_item error: ", e);
+      return AccessCodes.SYSTEM_ERROR;
+    } else {
+      console.log("get_item success: ", data.Item);
+      // logic for testing 
+      return gym_auth_is_valid(data.Item);
+    }
+  })
 }
 
 module.exports.handler = async (event, context, callback) => {
