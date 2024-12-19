@@ -1,9 +1,14 @@
 ## CornerCam Custom Authorizer
 
 ### creating a valid test event
-
-
-
+CLIENT_SECRET=$(aws ssm get-parameter --name /cornercam/spa-client-secret --with-decryption | jq -r ".Parameter.Value")
+curl --request POST \
+  --url 'https://onemanband.auth0.com/oauth/token' \
+  --header 'content-type: application/x-www-form-urlencoded' \
+  --data grant_type=client_credentials \
+  --data client_id=cbgv2CWIDxyv0knB60nHISXWbh8xScSQ \
+  --data client_secret=$CLIENT_SECRET \
+  --data audience=https://cornercam.net
 
 # AWS API Gateway Custom Authorizer for RS256 JWTs
 
