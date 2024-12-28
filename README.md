@@ -1,6 +1,12 @@
-## CornerCam Custom Authorizer
+# CornerCam Custom Authorizer
+(based on AWS API Gateway Custom Authorizer for RS256 JWTs)
 
-### creating a valid test event
+### How to test
+1. The `.env` file must be present and correctly configured with: JWKS_URI, AUDIENCE, TOKEN_ISSUER (see original docs below if necessary)
+2. Use the commands below to fetch a valid test auth token, then add the token to the `event.json` file
+3. run `npm run test`
+
+```
 CLIENT_SECRET=$(aws ssm get-parameter --name /cornercam/spa-client-secret --with-decryption | jq -r ".Parameter.Value")
 curl --request POST \
   --url 'https://onemanband.auth0.com/oauth/token' \
@@ -9,8 +15,10 @@ curl --request POST \
   --data client_id=cbgv2CWIDxyv0knB60nHISXWbh8xScSQ \
   --data client_secret=$CLIENT_SECRET \
   --data audience=https://cornercam.net
+```
 
-# AWS API Gateway Custom Authorizer for RS256 JWTs
+----
+## Original README for AWS API Gateway Custom Authorizer for RS256 JWTs
 
 An AWS API Gateway [Custom Authorizer](http://docs.aws.amazon.com/apigateway/latest/developerguide/use-custom-authorizer.html) that authorizes API requests by requiring
 that the OAuth2 [bearer token](https://tools.ietf.org/html/rfc6750) is a JWT that can be validated using the RS256 (asymmetric) algorithm with a public key that is obtained from a [JWKS](https://tools.ietf.org/html/rfc7517) endpoint.

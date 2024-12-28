@@ -65,6 +65,7 @@ const is_authorized = async (user_id, gym_id) => {
     }
   }
   return await dynamo.getItem(req_params, function(e, data) {
+    console.log("dynamo callback");
     if (e) {
       console.log("get_item error: ", e);
       return AccessCodes.SYSTEM_ERROR;
@@ -73,7 +74,7 @@ const is_authorized = async (user_id, gym_id) => {
       // logic for testing 
       return gym_auth_is_valid(data.Item);
     }
-  })
+  }).promise();
 }
 
 module.exports.handler = async (event, context, callback) => {
@@ -92,8 +93,10 @@ module.exports.handler = async (event, context, callback) => {
     console.log("authentication complete");
     
     // get metadata from auth0
-    const [message, access_level] = await is_authorized(user_id, 1); // "google-oauth2|106647354996701306231"
-    console.log(message);
+    // const [message, access_level] = await is_authorized(user_id, 1); // "google-oauth2|106647354996701306231"
+    // query dynamo userService
+    access_level = await is_authorized(user_id, 1);
+    console.log(access_level);
     if (access_level == AccessCodes.ALLOW) {
       return data;
     } else if (access_level == AccessCodes.SYSTEM_ERROR) {

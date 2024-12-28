@@ -8,9 +8,9 @@ let GSI1 = "GSI1";
 
 const encoded_user_id = (user_id) => { encodeURIComponent(user_id); }
 
-function query_or_null(params) {
+async function query_or_null(params) {
     callerFunction = (new Error()).stack?.split("\n")[2]?.trim().split(" ")[1]
-    return dynamo.query(req_params, function(e, data) {
+    return await dynamo.query(req_params, function(e, data) {
         if (e) {
           console.log(callerFunction + " error: ", e);
           return null;
@@ -19,10 +19,10 @@ function query_or_null(params) {
           // logic for testing 
           return data.Item;
         }
-      })
+      }).promise();
 }
 
-const users_for_gym = (gym_id) => {
+export function users_for_gym(gym_id) {
 
     let PK = "GYM#" + gym_id;
     let SKPattern = "USER#";
