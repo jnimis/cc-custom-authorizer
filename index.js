@@ -4,7 +4,6 @@ const lib = require('./lib');
 const winston = require('winston');
 
 let data;
-var ssm = new AWS.SSM({region: 'us-east-1'});
 var dynamo = new AWS.DynamoDB({apiVersion: "2012-08-10", region: 'us-east-1'})
 
 let TABLE_NAME = "CCUserService";
