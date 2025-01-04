@@ -57,6 +57,7 @@ module.exports.authenticate = (params) => {
         })
         .then((decoded)=> ({
             principalId: decoded.sub,
+            email: decoded["https://cornercam.net/email"],
             policyDocument: getPolicyDocument('Allow', params.methodArn),
             context: { scope: decoded.scope }
         }));

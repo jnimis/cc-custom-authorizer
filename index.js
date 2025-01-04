@@ -84,8 +84,8 @@ module.exports.handler = async (event, context, callback) => {
     var user_id;
     try { 
       data = await lib.authenticate(event);
-      user_id = data.principalId;
-      console.log("user id is " + user_id);
+      user_id = data.email;
+      console.log("user email is " + user_id);
     } catch (e) {
       console.log("error inside authentication flow", e);
       return context.fail("Authentication failure: invalid auth token");
