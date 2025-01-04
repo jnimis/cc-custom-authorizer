@@ -1,6 +1,8 @@
 
 var AWS = require('aws-sdk');
 const lib = require('./lib');
+const winston = require('winston');
+
 let data;
 var ssm = new AWS.SSM({region: 'us-east-1'});
 var dynamo = new AWS.DynamoDB({apiVersion: "2012-08-10", region: 'us-east-1'})
@@ -14,47 +16,42 @@ const AccessCodes = Object.freeze({
   SYSTEM_ERROR:  11
 });
 
+const logger = winston.createLogger({
+  level: 'info',
+  format: winston.format.json(),
+  transports: [new winston.transports.Console()],
+});
+
 function isEmpty(val) {
   return val == undefined || val == null;
 }
 
-const get_admin_api_token = async () => {
-  console.log("initialized ssm");
-  var params = {
-    Name: "/cornercam/auth0-admin-api-key",
-    WithDecryption: true
-  }
-  try {
-    const ssmResponse = await ssm.getParameter(params).promise()
-    return ssmResponse.Parameter.Value;
-  } catch(error) {
-    console.log(error);
-    return undefined;
-  }
-}
-
 const gym_auth_is_valid = async (gym_auth) => {
+  
   if (isEmpty(gym_auth)) {
+    logger.info("no user info");
     return AccessCodes.UNKNOWN_USER
   }
   
-  if (isEmpty(gym_auth.accessExpires)) {
+  accessExpiration = gym_auth.access_expires.S;
+  if (isEmpty(accessExpiration)) {
+    logger.info("no expiration: " + accessExpiration);
     return AccessCodes.UNAUTHORIZED;
   }
   
   let today = new Date().toISOString().substring(0, 10);
 
-  if (gym_auth.accessExpires >= today) {
+  if (accessExpiration >= today) {
     return AccessCodes.ALLOW;
   } else {
+    logger.info("owes money: " + accessExpiration + " is before " + today);
     return AccessCodes.UNAUTHORIZED; // owes money
   }
 }
 
 const is_authorized = async (user_id, gym_id) => {
 
-  let encoded_user_id = encodeURIComponent(user_id);
-  
+  // let encoded_user_id = encodeURIComponent(user_id);
   let PK = "USER#" + user_id;
   let SK = "GYM#" + gym_id;
   req_params = {
@@ -65,12 +62,11 @@ const is_authorized = async (user_id, gym_id) => {
     }
   }
   return await dynamo.getItem(req_params, function(e, data) {
-    console.log("dynamo callback");
     if (e) {
-      console.log("get_item error: ", e);
+      logger.error("dynamo get_item error: " + e);
       return AccessCodes.SYSTEM_ERROR;
     } else {
-      console.log("get_item success: ", data.Item);
+      logger.debug("dynamo get_item success: " + data.Item);
       // logic for testing 
       return gym_auth_is_valid(data.Item);
     }
@@ -79,25 +75,23 @@ const is_authorized = async (user_id, gym_id) => {
 
 module.exports.handler = async (event, context, callback) => {
   try {
-    console.log("start of function");
+    logger.debug("start of function");
 
     var user_id;
     try { 
       data = await lib.authenticate(event);
       user_id = data.email;
-      console.log("user email is " + user_id);
     } catch (e) {
-      console.log("error inside authentication flow", e);
+      logger.error("error inside authentication flow", e);
       return context.fail("Authentication failure: invalid auth token");
     }
-    console.log("authentication complete");
+    logger.info("authentication complete for " + user_id);
     
-    // get metadata from auth0
-    // const [message, access_level] = await is_authorized(user_id, 1); // "google-oauth2|106647354996701306231"
     // query dynamo userService
-    access_level = await is_authorized(user_id, 1);
-    console.log(access_level);
+    access_level = await is_authorized(user_id, 1); // TODO: dynamic gym_id
+    
     if (access_level == AccessCodes.ALLOW) {
+      logger.info("user authorized");
       return data;
     } else if (access_level == AccessCodes.SYSTEM_ERROR) {
       return context.fail("There was a system error: 105");
@@ -106,7 +100,7 @@ module.exports.handler = async (event, context, callback) => {
     }
   }
   catch (err) {
-      console.log(err);
+      logger.error(err);
       return context.fail("There was a system error: 112");
   }
 };
