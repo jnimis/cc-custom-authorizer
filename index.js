@@ -77,7 +77,7 @@ module.exports.handler = async (event, context, callback) => {
     logger.debug("start of function");
 
     var user_id;
-    try { 
+    try {
       data = await lib.authenticate(event);
       user_id = data.email;
     } catch (e) {

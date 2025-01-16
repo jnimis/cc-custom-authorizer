@@ -19,10 +19,6 @@ const getPolicyDocument = (effect, resource) => {
 
 // extract and return the Bearer Token from the Lambda event parameters
 const getToken = (params) => {
-    if (!params.type || params.type !== 'TOKEN') {
-        throw new Error('Expected "event.type" parameter to have value "TOKEN"');
-    }
-
     const tokenString = params.authorizationToken;
     if (!tokenString) {
         throw new Error('Expected "event.authorizationToken" parameter to be set');
@@ -35,6 +31,14 @@ const getToken = (params) => {
     return match[1];
 }
 
+const getTokenFromRequest = (params) => {
+    const tokenString = params.headers.Authorization;
+    if (!tokenString) {
+        throw new Error('Couldnt find authorization token parameter in request');
+    }
+    return tokenString;
+}
+
 const jwtOptions = {
     audience: process.env.AUDIENCE,
     issuer: process.env.TOKEN_ISSUER
@@ -42,7 +46,11 @@ const jwtOptions = {
 
 module.exports.authenticate = (params) => {
     
-    const token = getToken(params);
+    if (!params.type || (params.type !== 'REQUEST' && params.type !== 'TOKEN')) {
+        throw new Error('Expected "event.type" parameter to have either value "TOKEN" or "REQUEST"');
+    }
+
+    const token = params.type === "REQUEST" ? getTokenFromRequest(params) : getToken(params);
 
     const decoded = jwt.decode(token, { complete: true });
     if (!decoded || !decoded.header || !decoded.header.kid) {
