@@ -16,7 +16,7 @@ const AccessCodes = Object.freeze({
 });
 
 const logger = winston.createLogger({
-  level: 'info',
+  level: 'debug',
   format: winston.format.json(),
   transports: [new winston.transports.Console()],
 });
@@ -76,24 +76,34 @@ module.exports.handler = async (event, context, callback) => {
   try {
     logger.debug("start of function");
 
+    gym_id = params.headers.gym;
+    if (!gym_id) {
+      logger.error("no `gym` header on request");
+      return context.fail("Invalid request");
+    }
+
     var user_id;
     try {
       data = await lib.authenticate(event);
       user_id = data.email;
     } catch (e) {
       logger.error("error inside authentication flow", e);
-      return context.fail("Authentication failure: invalid auth token");
+      return context.fail("91 Authentication failure: unable to authenticate user using access token");
     }
     logger.info("authentication complete for " + user_id);
     
     // query dynamo userService
-    access_level = await is_authorized(user_id, 1); // TODO: dynamic gym_id
-    
+    try {
+      access_level = await is_authorized(user_id, gym_id);
+    } catch (e) {
+      logger.error("error inside authorization flow", e);
+      return context.fail("100 Authorization failure: there was a system issue while trying to authorize user " + user_id);
+    }
+
+    logger.debug("access level: " + access_level);
     if (access_level == AccessCodes.ALLOW) {
       logger.info("user authorized");
       return data;
-    } else if (access_level == AccessCodes.SYSTEM_ERROR) {
-      return context.fail("There was a system error: 105");
     } else {
       return context.fail("User not authorized for this gym");
     }

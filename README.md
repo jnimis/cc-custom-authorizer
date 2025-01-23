@@ -1,6 +1,12 @@
 # CornerCam Custom Authorizer
 (based on AWS API Gateway Custom Authorizer for RS256 JWTs)
 
+### starting a local docker image for testing
+From the project root folder, you should be able to run `docker-compose up` to start a local DynamoDB instance at port 8000
+`aws dynamodb list-tables --endpoint-url http://localhost:8000` is an example command
+TODO: write scripts to initialize test data in this docker image
+
+
 ### How to test
 1. The `.env` file must be present and correctly configured with: JWKS_URI, AUDIENCE, TOKEN_ISSUER (see original docs below if necessary)
 2. Use the commands below to fetch a valid test auth token, then add the token to the `event.json` file
@@ -15,6 +21,12 @@ curl --request POST \
   --data client_id=cbgv2CWIDxyv0knB60nHISXWbh8xScSQ \
   --data client_secret=$CLIENT_SECRET \
   --data audience=https://cornercam.net
+```
+
+### Testing within API Gateway
+
+```
+curl https://it93178xa2.execute-api.us-east-1.amazonaws.com/dev/test
 ```
 
 ----
